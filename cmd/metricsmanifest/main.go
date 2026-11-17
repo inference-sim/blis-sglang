@@ -1,7 +1,7 @@
 // Original to blis-sglang.
 
 // Command metricsmanifest lists every sglang:* metric family SGLang's serving code defines, from
-// the release's own source, and writes it as docs/metrics-manifest.json with each family's class:
+// the release's own source, and writes it as oracle/metrics/manifest.json with each family's class:
 //
 //   - exact: the scheduler alone decides the value and core/metrics reproduces it;
 //   - derived: it needs an input the simulator supplies, such as time or a transfer outcome;
@@ -12,11 +12,11 @@
 // name= argument or first positional argument, under python/sglang/srt. Every other "sglang:"
 // string literal there must be listed in the classes file's not_families with why, and every
 // family must match a class rule (or be listed in exact_series). A family a release adds or drops
-// therefore fails the run until docs/metrics-classes.json says what it is, which is the point: a
+// therefore fails the run until oracle/metrics/classes.json says what it is, which is the point: a
 // family nobody ported is a listed gap, never a silent one.
 //
-// Usage: go run ./cmd/metricsmanifest -sglang <checkout> [-classes docs/metrics-classes.json]
-// [-out docs/metrics-manifest.json] [-check]
+// Usage: go run ./cmd/metricsmanifest -sglang <checkout> [-classes oracle/metrics/classes.json]
+// [-out oracle/metrics/manifest.json] [-check]
 package main
 
 import (
@@ -49,14 +49,14 @@ type Rule struct {
 	Why   string `json:"why"`
 }
 
-// Classes is docs/metrics-classes.json.
+// Classes is oracle/metrics/classes.json.
 type Classes struct {
 	ExactSeries []string          `json:"exact_series"`
 	Rules       []Rule            `json:"rules"`
 	NotFamilies map[string]string `json:"not_families"`
 }
 
-// Manifest is docs/metrics-manifest.json.
+// Manifest is oracle/metrics/manifest.json.
 type Manifest struct {
 	Upstream string   `json:"upstream"`
 	Families []Family `json:"families"`
@@ -70,8 +70,8 @@ var (
 
 func main() {
 	root := flag.String("sglang", "", "SGLang checkout")
-	classesPath := flag.String("classes", "docs/metrics-classes.json", "classes file")
-	out := flag.String("out", "docs/metrics-manifest.json", "manifest")
+	classesPath := flag.String("classes", "oracle/metrics/classes.json", "classes file")
+	out := flag.String("out", "oracle/metrics/manifest.json", "manifest")
 	check := flag.Bool("check", false, "fail if the manifest on disk differs")
 	flag.Parse()
 	if err := run(*root, *classesPath, *out, *check); err != nil {

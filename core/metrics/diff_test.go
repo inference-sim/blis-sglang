@@ -25,7 +25,7 @@ import (
 const (
 	goldenDir   = "testdata/golden-metrics"
 	scenarioDir = "../../oracle/scenarios-metrics"
-	classesPath = "../../docs/metrics-classes.json"
+	classesPath = "../../oracle/metrics/classes.json"
 )
 
 type traceStep struct {

@@ -5,7 +5,7 @@
 // and python/sglang/srt/managers/scheduler_components/pool_stats_observer.py.
 
 // Package metrics is the sglang:* Prometheus series whose values the scheduler alone decides
-// (class "exact" in docs/metrics-classes.json): the queue and pool gauges SchedulerMetricsReporter
+// (class "exact" in oracle/metrics/classes.json): the queue and pool gauges SchedulerMetricsReporter
 // logs and the token counters it increments. It reads the Reports core/sched makes as a batch's
 // result is processed and keeps each series as SchedulerMetricsCollector does
 // (observability/metrics_collector.py:1417-1429, :1558-1596, :1646-1726@297e54fd).
