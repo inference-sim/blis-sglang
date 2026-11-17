@@ -177,14 +177,12 @@ are two kinds of mutant:
 A survivor fails the sweep, unless `mutants.json` lists it in `known_gaps`, citing the issue, or in
 `equivalent`, saying why. A pull request sweeps what it changed: the listed mutants of each changed
 file and of each changed test file, and the generated mutants of each changed ported function. The
-sweep takes about half an hour, so a pull request runs it only if it carries the label
-`run-mutation`, is the integration pull request (head `m3/integration`) or is into `main`. The full
-sweep runs nightly (once this workflow is on `main`), on release tags and on demand. A green
-`mutation` run on the exact head of the integration pull request is a required step of every
-cut's checklist.
+full sweep runs nightly, on release tags and on demand. CI shares the selected mutants over six
+shards (`--shard I/N`), which start once the cheap checks have passed; the check named `mutation`
+passes only if every shard did.
 
 ```sh
-python3 -I oracle/mutate.py [--changed <base>] [--list] <sglang checkout> <scratch dir>
+python3 -I oracle/mutate.py [--changed <base>] [--list] [--shard I/N] <sglang checkout> <scratch dir>
 ```
 ## Traces at the cache framework's interfaces (FID-5)
 
