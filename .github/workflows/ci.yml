@@ -168,7 +168,7 @@ jobs:
   #   shard         runs                                                         was, in one job
   #   resolve       the mock and peer checks, the import check, ServerArgs (T1)    about 4 min
   #   lower         lowering, then every tier-2 scenario                           about 5 min
-  #   sched-0/1     the scheduling loop (S13), scenario i going to shard i mod 2   about 11 min
+  #   sched-0/1/2   the scheduling loop (S13), scenario i going to shard i mod 3   about 11 min
   #   cache         the cache framework's interfaces (FID-5) and the pools (SGL-6) about 3 min
   #   hicache-metrics  HiCache (FID-5) and the metrics and KV events (S15)         about 4 min
   oracle-run:
@@ -184,10 +184,11 @@ jobs:
           - {group: lower}
           - {group: sched-0, part: 0}
           - {group: sched-1, part: 1}
+          - {group: sched-2, part: 2}
           - {group: cache}
           - {group: hicache-metrics}
     env:
-      SCHED_PARTS: 2
+      SCHED_PARTS: 3
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
