@@ -1,14 +1,23 @@
 name: mutation
 
 # The mutation sweep (T7, oracle/mutate.py). It applies one deliberate one-line break at a time and
-# fails when the suite that covers it still passes. On a pull request it sweeps only what the pull
-# request changed: the listed mutants of each changed file and of each changed test file, and the
-# generated mutants of each ported Go function it changed. The full sweep runs nightly, on
-# release tags and on demand.
+# fails when the suite that covers it still passes.
+#
+# It takes about half an hour, so it does not run on every push of every pull request. It runs
+#   - on a pull request that carries the label `run-mutation`, whatever its base;
+#   - on the integration pull request (head branch m3/integration) and on any pull request into
+#     main, so on every push to either;
+#   - nightly, on release tags and on demand, in full (a schedule runs from the default branch's
+#     copy of this file, so it starts when this file is on main).
+# A run for a pull request sweeps only what the pull request changed: the listed mutants of each
+# changed file and of each changed test file, and the generated mutants of each ported Go function
+# it changed. For the integration pull request that is everything changed since main. A green
+# `mutation` run on the exact head of the integration pull request (or a green full sweep started
+# by hand on it) is a required step of every cut's checklist: no cut is made without one.
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
     paths:
       - "**.go"
       - "oracle/**"
@@ -22,8 +31,10 @@ on:
 permissions:
   contents: read
 
+# Adding a label other than run-mutation starts a run that does nothing; it gets its own group so
+# it cannot cancel a sweep in progress.
 concurrency:
-  group: mutation-${{ github.event.pull_request.number || github.ref }}
+  group: mutation-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'run-mutation' && '-unrelated-label' || '' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -32,6 +43,15 @@ env:
 jobs:
   mutation:
     name: mutation
+    # Skipped (it reports skipped, which no branch rule requires) on a pull request that is not
+    # into main, is not the integration pull request and does not carry the label.
+    # A label event runs it only for the label run-mutation, so another label never repeats a sweep.
+    if: >-
+      github.event_name != 'pull_request'
+      || ((github.event.action != 'labeled' || github.event.label.name == 'run-mutation')
+          && (github.base_ref == 'main'
+              || github.head_ref == 'm3/integration'
+              || contains(github.event.pull_request.labels.*.name, 'run-mutation')))
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
