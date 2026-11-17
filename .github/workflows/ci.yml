@@ -173,7 +173,7 @@ jobs:
   #   hicache-metrics  HiCache (FID-5) and the metrics and KV events (S15)         about 4 min
   oracle-run:
     name: oracle-run (${{ matrix.group }})
-    needs: [go, lint, oracle-checks, goldens-reviewed, fields]
+    needs: [go, lint, goldens-reviewed, fields]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -371,7 +371,7 @@ jobs:
   # when one job wrote them all, and it reports a scenario that no shard ran.
   oracle:
     name: oracle
-    needs: [go, lint, oracle-checks, goldens-reviewed, fields, oracle-run]
+    needs: [go, lint, goldens-reviewed, fields, oracle-run]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -477,7 +477,7 @@ jobs:
   # it with an open issue.
   treecore-diff:
     name: treecore-diff
-    needs: [go, lint, oracle-checks, goldens-reviewed, fields]
+    needs: [go, lint, goldens-reviewed, fields]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:

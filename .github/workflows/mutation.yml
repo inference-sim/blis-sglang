@@ -48,7 +48,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       SHA: ${{ github.event.pull_request.head.sha }}
-      CHEAP: go lint oracle-checks goldens-reviewed fields
+      CHEAP: go lint goldens-reviewed fields
     steps:
       - name: the cheap checks of this head passed
         run: |
