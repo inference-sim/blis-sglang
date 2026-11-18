@@ -335,7 +335,7 @@ def install(run: Run) -> None:
     receive = request_receiver.SchedulerRequestReceiver.recv_requests
     receive_code = getattr(receive, "__wrapped__", receive).__code__
     mon = sys.monitoring
-    tool = next((t for t in (mon.PROFILER_ID, 3, 4) if mon.get_tool(t) is None), None)
+    tool = next((t for t in (4, 3) if mon.get_tool(t) is None), None)
     if tool is None:
         raise RuntimeError("no free sys.monitoring tool id for the iteration boundary")
     mon.use_tool_id(tool, "blis-sglang oracle iteration boundary")
