@@ -55,7 +55,13 @@ type Config struct {
 	Allocator                          string `json:"allocator"`
 	TreeCache                          string `json:"tree_cache"`
 	DisaggregationMode                 string `json:"disaggregation_mode"`
-	EnableOverlap                      bool   `json:"enable_overlap"`
+	// SchedulerRecvInterval is scheduler_recv_interval: above one, SchedulerRecvSkipper
+	// (scheduler_components/recv_skipper.py@297e54fd) lets the loop read its request socket only when
+	// the weights of the last batches sum to the interval. Zero or one reads every iteration. It is not
+	// a recorded setting of the golden traces, so it carries no JSON name; a scenario states it as a
+	// server argument.
+	SchedulerRecvInterval int  `json:"-"`
+	EnableOverlap         bool `json:"enable_overlap"`
 	// DisableConsecutivePrefillOverlap is SGLANG_DISABLE_CONSECUTIVE_PREFILL_OVERLAP
 	// (environ.py:693@297e54fd, default off): two extend batches in a row do not overlap.
 	DisableConsecutivePrefillOverlap bool `json:"disable_consecutive_prefill_overlap"`
@@ -125,6 +131,11 @@ type Scheduler struct {
 	tree   cache.PrefixCache
 	alloc  cache.Allocator
 	pool   cache.ReqToTokenPool
+
+	// inbox holds the arrivals the loop has not read yet: with scheduler_recv_interval above one the
+	// socket keeps requests between the iterations that read it. recvCounter is the skipper's counter.
+	inbox       []Arrival
+	recvCounter int
 
 	waiting       []*Req
 	running       *Batch
@@ -737,8 +748,9 @@ func (s *Scheduler) Step(arrivals []Arrival) (rec StepRecord, err error) {
 	}()
 	s.finishedThisStep = nil
 	s.reports = nil
-	for _, a := range arrivals {
-		s.handleGenerateRequest(a)
+	s.inbox = append(s.inbox, arrivals...)
+	if s.recvNow() {
+		s.readInbox()
 	}
 	var batch *Batch
 	if s.cfg.EnableOverlap {
@@ -758,6 +770,45 @@ func (s *Scheduler) Step(arrivals []Arrival) (rec StepRecord, err error) {
 	rec.After = s.State()
 	s.step++
 	return rec, nil
+}
+
+// The weights of SchedulerRecvSkipper: the environment variables SGLANG_SCHEDULER_RECV_SKIPPER_WEIGHT_*
+// (environ.py:675-678@297e54fd) at their defaults. A decode batch, a verify batch or no batch adds one
+// to the counter; any other batch (extend, mixed) adds 1000.
+const (
+	recvWeightDefault = 1000
+	recvWeightDecode  = 1
+	recvWeightNone    = 1
+)
+
+// recvNow is SchedulerRecvSkipper.handle (recv_skipper.py:57-69@297e54fd): whether this iteration reads
+// the request socket. Without a skipper (an interval of one or less) every iteration does.
+func (s *Scheduler) recvNow() bool {
+	if s.cfg.SchedulerRecvInterval <= 1 {
+		return true
+	}
+	w := recvWeightDefault
+	switch {
+	case s.last == nil:
+		w = recvWeightNone
+	case s.last.Mode == Decode:
+		w = recvWeightDecode
+	}
+	s.recvCounter += w
+	if s.recvCounter >= s.cfg.SchedulerRecvInterval {
+		s.recvCounter = 0
+		return true
+	}
+	return false
+}
+
+// readInbox is the read of the request socket: every held arrival is handled.
+func (s *Scheduler) readInbox() {
+	in := s.inbox
+	s.inbox = nil
+	for _, a := range in {
+		s.handleGenerateRequest(a)
+	}
 }
 
 // State reads what the scheduler holds now.

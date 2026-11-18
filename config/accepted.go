@@ -43,6 +43,7 @@ var acceptedFields = map[string][]any{
 	// inert to every decision there.
 	"max_prefill_tokens":                 nil,
 	"tokenizer_worker_num":               nil,
+	"scheduler_recv_interval":            nil,
 	"cuda_graph_max_bs_decode":           nil,
 	"attention_backend":                  {nil, "flashinfer", "fa3"},
 	"stream_interval":                    nil,

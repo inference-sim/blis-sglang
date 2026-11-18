@@ -149,29 +149,32 @@ def tokenized(r: dict, scenario: dict):
 
 
 class TokenizerSocket:
-    """The socket the scheduler reads from the tokenizer. Its first receive in a loop iteration
-    starts the iteration; it then yields that iteration's arrivals, and raises zmq.Again when
-    they are drained, as an empty non-blocking socket does."""
+    """The socket the scheduler reads from the tokenizer. A loop iteration starts when the scheduler enters
+    its request receiver (begin_iteration, observed by sys.monitoring at the receiver's entry, so that an
+    iteration whose receive the scheduler skips -- scheduler_recv_interval above one -- still counts as a
+    step); the iteration's scenario arrivals join what the socket holds. A receive yields what it holds in
+    order and raises zmq.Again when it is empty, as a non-blocking socket does. What a skipped iteration
+    leaves stays in the socket for the next receive; what a receive leaves unread (max_recv_per_poll) is a
+    problem, because steps would no longer be loop iterations."""
 
     def __init__(self, run: Run):
         self.run = run
-        self.pending = None
-        # Set by the RPC socket, which the scheduler polls after this one in every iteration.
-        self.iteration_ended = False
+        self.held = collections.deque()
+        # Whether the socket was read in the current iteration.
+        self.read = False
+
+    def begin_iteration(self) -> None:
+        if self.read and self.held:
+            self.run.problems.append(f"step {self.run.step}: {len(self.held)} arrivals left undelivered "
+                                     "when the iteration ended")
+            self.held.clear()
+        self.read = False
+        self.held.extend(self.run.begin_step())
 
     def _next(self):
-        if self.iteration_ended and self.pending:
-            # The receive stopped before draining this iteration's arrivals (max_recv_per_poll):
-            # steps would no longer be loop iterations.
-            self.run.problems.append(f"step {self.run.step}: {len(self.pending)} arrivals left undelivered "
-                                     "when the iteration ended")
-            self.pending = None
-        self.iteration_ended = False
-        if self.pending is None:
-            self.pending = collections.deque(self.run.begin_step())
-        if self.pending:
-            return self.pending.popleft()
-        self.pending = None
+        self.read = True
+        if self.held:
+            return self.held.popleft()
         import zmq
 
         raise zmq.Again()
@@ -195,7 +198,6 @@ class SilentSocket:
         self.tokenizer = tokenizer
 
     def recv_pyobj(self, flags=0):
-        self.tokenizer.iteration_ended = True
         import zmq
 
         raise zmq.Again()
@@ -322,6 +324,23 @@ def install(run: Run) -> None:
         raise RuntimeError(f"an unexpected socket type {socket_type} for {endpoint}")
 
     ipc_channels.get_zmq_socket = fake_socket
+
+    # transport: a loop iteration starts where the scheduler enters its request receiver, which every
+    # iteration does once, whether or not its recv skipper then reads the socket. The entry is observed,
+    # not replaced (sys.monitoring, as oracle/cache_interfaces.py observes the cache interfaces).
+    import sys
+
+    import sglang.srt.managers.scheduler_components.request_receiver as request_receiver
+
+    receive = request_receiver.SchedulerRequestReceiver.recv_requests
+    receive_code = getattr(receive, "__wrapped__", receive).__code__
+    mon = sys.monitoring
+    tool = next((t for t in (mon.PROFILER_ID, 3, 4) if mon.get_tool(t) is None), None)
+    if tool is None:
+        raise RuntimeError("no free sys.monitoring tool id for the iteration boundary")
+    mon.use_tool_id(tool, "blis-sglang oracle iteration boundary")
+    mon.register_callback(tool, mon.events.PY_START, lambda code, offset: sockets["tokenizer"].begin_iteration())
+    mon.set_local_events(tool, receive_code, mon.events.PY_START)
 
     # gpu: no weights, no kernels; the batch each forward is asked to run is recorded.
     import sglang.srt.model_executor.model_runner as model_runner_module

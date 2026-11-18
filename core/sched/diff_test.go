@@ -45,7 +45,10 @@ type trace struct {
 type scenario struct {
 	Page         int   `json:"page_size"`
 	SampledToken int64 `json:"sampled_token"`
-	Requests     []struct {
+	// ServerArgs are the scenario's extra ServerArgs; the replay reads scheduler_recv_interval, which the
+	// recorded configuration does not carry.
+	ServerArgs map[string]any `json:"server_args"`
+	Requests   []struct {
 		RID          string  `json:"rid"`
 		ArrivalStep  int     `json:"arrival_step"`
 		Prompt       []int64 `json:"prompt"`
@@ -136,6 +139,9 @@ func sglangOrder(step traceStep) func([]string) []string {
 // replay runs a scenario on the port and returns each step's record. A non-nil tr supplies
 // SGLang's shuffle for the random policy.
 func replay(sc scenario, cfg Config, steps int, tr *trace) ([]StepRecord, error) {
+	if v, ok := sc.ServerArgs["scheduler_recv_interval"].(float64); ok {
+		cfg.SchedulerRecvInterval = int(v)
+	}
 	s, err := build(cfg, sc.SampledToken)
 	if err != nil {
 		return nil, err

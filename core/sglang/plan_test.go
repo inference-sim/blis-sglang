@@ -59,6 +59,8 @@ func scenarioArgs(t *testing.T, sc map[string]any) SchedArgs {
 			a.AllowAutoTruncate = v.(bool)
 		case "max_prefill_tokens":
 			a.MaxPrefillTokens = int(v.(float64))
+		case "scheduler_recv_interval":
+			a.SchedulerRecvInterval = int(v.(float64))
 		default:
 			t.Fatalf("scenario sets server_arg %q, which the derivation test does not map", k)
 		}
