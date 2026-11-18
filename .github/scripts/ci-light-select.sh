@@ -53,7 +53,7 @@ groups)
 checks)
   self='^(provenance\.go|\.github/workflows/ci-light\.yml)$'
   f='^(fields/|fields\.json$|config/(gen_serverargs\.py|serverargs_gen\.go)$)'
-  c='^(oracle/|tools/surface/|surface\.json$|docs/metrics-|cmd/metricsmanifest/|core/metrics/[^/]*\.go$)'
+  c='^(oracle/|tools/surface/|surface\.json$|oracle/metrics/|cmd/metricsmanifest/|core/metrics/[^/]*\.go$)'
   for pair in "fields:$f" "oracle-checks:$c"; do
     n="${pair%%:*}"; r="${pair#*:}"
     if printf '%s\n' "$files" | grep -qE "$self|$r"; then echo "$n=true"; else echo "$n=false"; fi

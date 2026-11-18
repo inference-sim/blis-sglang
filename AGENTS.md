@@ -7,7 +7,7 @@ same rules; they are written here so an agent reads them first.
 
 blis-sglang sits between blis-substrate and inference-sim. A change that touches more than one
 repository follows
-[Changes across the repositories](https://github.com/inference-sim/blis-substrate/blob/main/docs/contributing/changes.md#across-blis-repositories).
+[the design](https://inference-sim.github.io/blis-design/) (changes across the repositories).
 In short:
 
 1. **Public artifacts.** Never write internal project, customer or colleague names in a commit,
