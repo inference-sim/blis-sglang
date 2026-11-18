@@ -271,21 +271,24 @@ jobs:
           commit="$(sed -n 's/^\tCommit: *"\([0-9a-f]\{40\}\)",$/\1/p' provenance.go)"
           test -n "$commit"
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      # Every step runs whatever an earlier compare found, so the group's traces are all uploaded for the
+      # goldens to be recorded or refreshed from (a stale golden fails its compare, which must not hide the
+      # steps after it).
       # resolve
       - name: every replacement the harness makes is listed, and none is decision code
-        if: matrix.group == 'resolve'
+        if: ${{ !cancelled() && (matrix.group == 'resolve') }}
         run: python -I oracle/check_mocks.py oracle/mocks.json
       - name: a KV-transfer or KV-store client in the lock is at its peers.json pin
-        if: matrix.group == 'resolve'
+        if: ${{ !cancelled() && (matrix.group == 'resolve') }}
         run: python -I oracle/check_peers.py
       - name: the scheduler imports from the pinned checkout in the locked environment
-        if: matrix.group == 'resolve'
+        if: ${{ !cancelled() && (matrix.group == 'resolve') }}
         run: python -I oracle/run_import.py sglang-source
       - name: fetch the ServerArgs cases' model configurations at their pinned revisions
-        if: matrix.group == 'resolve' || matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'resolve' || matrix.group == 'lower') }}
         run: python -I oracle/serverargs/fetch_models.py oracle/serverargs/cases.json serverargs-models
       - name: resolve every ServerArgs case through SGLang's own pipeline
-        if: matrix.group == 'resolve'
+        if: ${{ !cancelled() && (matrix.group == 'resolve') }}
         env:
           HF_HUB_OFFLINE: "1"
         run: |
@@ -293,14 +296,14 @@ jobs:
           mkdir -p shard-out/oracle-traces
           python -I oracle/run_serverargs.py sglang-source oracle/serverargs/cases.json serverargs-models > shard-out/oracle-traces/serverargs.json
       - name: the committed ServerArgs answers are SGLang's own
-        if: matrix.group == 'resolve'
+        if: ${{ !cancelled() && (matrix.group == 'resolve') }}
         run: python -I oracle/compare_serverargs.py config/testdata/serverargs.json shard-out/oracle-traces/serverargs.json
       # lower: the lowering answers, then every tier-2 scenario
       - name: every replacement the lowering oracle makes is listed
-        if: matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'lower') }}
         run: python -I oracle/lower/check_replacements.py oracle/lower/extract.py oracle/lower/replacements.json
       - name: lower every accepted case through SGLang's own functions
-        if: matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'lower') }}
         env:
           HF_HUB_OFFLINE: "1"
         run: |
@@ -308,10 +311,10 @@ jobs:
           mkdir -p shard-out/oracle-traces
           python -I oracle/lower/extract.py sglang-source oracle/serverargs/cases.json serverargs-models oracle/lower/cases.json > shard-out/oracle-traces/lower.json
       - name: the committed lowering answers are SGLang's own
-        if: matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'lower') }}
         run: diff -u lower/testdata/sglang_lower.json shard-out/oracle-traces/lower.json
       - name: run every scenario through SGLang's scheduler
-        if: matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'lower') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -325,11 +328,11 @@ jobs:
             python -I oracle/run_scheduler.py sglang-source "$s" "shard-out/oracle-traces/$name.trace.json"
           done
       - name: every golden trace is SGLang's own output
-        if: matrix.group == 'lower'
+        if: ${{ !cancelled() && (matrix.group == 'lower') }}
         run: python -I oracle/compare_goldens.py shard-out/oracle-traces "${{ steps.pin.outputs.commit }}"
       # cache
       - name: trace the cache framework's interfaces
-        if: matrix.group == 'cache'
+        if: ${{ !cancelled() && (matrix.group == 'cache') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -352,7 +355,7 @@ jobs:
             python -I oracle/run_cache_iface.py direct sglang-source "$s" "$o/direct/$(basename "$s" .json).trace.json"
           done
       - name: trace the allocators and pools
-        if: matrix.group == 'cache'
+        if: ${{ !cancelled() && (matrix.group == 'cache') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -364,7 +367,7 @@ jobs:
             python -I oracle/run_pools.py direct sglang-source "$s" "shard-out/oracle-traces-pools/direct/$(basename "$s" .json).trace.json"
           done
       - name: every cache interface and pool golden is SGLang's own output
-        if: matrix.group == 'cache'
+        if: ${{ !cancelled() && (matrix.group == 'cache') }}
         run: |
           set -euo pipefail
           commit="${{ steps.pin.outputs.commit }}"
@@ -375,7 +378,7 @@ jobs:
           python -I oracle/compare_goldens.py $t/direct "$commit" oracle/scenarios-cache-iface core/cache/testdata/golden-fid5/direct
           python -I oracle/compare_goldens.py shard-out/oracle-traces-pools/direct "$commit" oracle/scenarios-pools core/cache/testdata/golden-pools/direct
       - name: trace the hybrid mamba pools and compare them
-        if: matrix.group == 'cache'
+        if: ${{ !cancelled() && (matrix.group == 'cache') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -394,7 +397,7 @@ jobs:
           python -I oracle/compare_goldens.py shard-out/oracle-traces-mamba-pools/component "${{ steps.pin.outputs.commit }}" oracle/scenarios-mamba-component core/cache/testdata/golden-pools/mamba-component
       # hicache-metrics
       - name: trace the HiCache framework's interfaces
-        if: matrix.group == 'hicache-metrics'
+        if: ${{ !cancelled() && (matrix.group == 'hicache-metrics') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -411,7 +414,7 @@ jobs:
             python -I oracle/run_hicache.py direct sglang-source "$s" "$o/direct/$(basename "$s" .json).trace.json"
           done
       - name: trace the metrics and KV events
-        if: matrix.group == 'hicache-metrics'
+        if: ${{ !cancelled() && (matrix.group == 'hicache-metrics') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -424,7 +427,7 @@ jobs:
             python -I oracle/run_metrics.py sglang-source "$s" "shard-out/oracle-traces-metrics/$(basename "$s" .json).trace.json"
           done
       - name: every HiCache interface and metrics golden is SGLang's own output
-        if: matrix.group == 'hicache-metrics'
+        if: ${{ !cancelled() && (matrix.group == 'hicache-metrics') }}
         run: |
           set -euo pipefail
           commit="${{ steps.pin.outputs.commit }}"
@@ -433,7 +436,7 @@ jobs:
           python -I oracle/compare_goldens.py $t/direct "$commit" oracle/scenarios/hicache/direct core/hicache/testdata/golden-fid5/direct
           python -I oracle/compare_goldens.py shard-out/oracle-traces-metrics "$commit" oracle/scenarios-metrics core/metrics/testdata/golden-metrics
       - name: trace the HiCache host tier
-        if: matrix.group == 'hicache-metrics'
+        if: ${{ !cancelled() && (matrix.group == 'hicache-metrics') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -453,7 +456,7 @@ jobs:
             python -I oracle/run_host_pools.py direct sglang-source "$s" "shard-out/oracle-traces-host-pools/$(basename "$s" .json).trace.json"
           done
       - name: every HiCache host tier and host pool golden is SGLang's own output
-        if: matrix.group == 'hicache-metrics'
+        if: ${{ !cancelled() && (matrix.group == 'hicache-metrics') }}
         run: |
           set -euo pipefail
           commit="${{ steps.pin.outputs.commit }}"
@@ -463,7 +466,7 @@ jobs:
           python -I oracle/compare_goldens.py shard-out/oracle-traces-host-pools "$commit" oracle/scenarios-host-pools core/hicache/testdata/golden-fid5/host-pools
       # sched: the scheduling loop, every scenario
       - name: trace the scheduling loop
-        if: matrix.group == 'sched'
+        if: ${{ !cancelled() && (matrix.group == 'sched') }}
         env:
           ORACLE_LOCKFILE: oracle-env.lock
           ORACLE_MODEL_REVISION: ${{ steps.env.outputs.model-revision }}
@@ -476,7 +479,7 @@ jobs:
             python -I oracle/run_sched.py sglang-source "$s" "shard-out/oracle-traces-sched/$(basename "$s" .json).trace.json"
           done
       - name: every scheduling golden is SGLang's own output
-        if: matrix.group == 'sched'
+        if: ${{ !cancelled() && (matrix.group == 'sched') }}
         run: python -I oracle/compare_goldens.py shard-out/oracle-traces-sched "${{ steps.pin.outputs.commit }}" oracle/scenarios-sched core/sched/testdata/golden-sched
       - name: upload the group's traces
         if: ${{ !cancelled() }}

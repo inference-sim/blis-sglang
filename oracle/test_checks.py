@@ -1088,14 +1088,25 @@ class Harness(unittest.TestCase):
 
         run_ = Two({"requests": [], "max_steps": 9}, HERE)
         tok = h.TokenizerSocket(run_)
-        rpc = h.SilentSocket(tok)
+        tok.begin_iteration()
         self.assertEqual(tok.recv_pyobj(), "a")
-        try:
-            rpc.recv_pyobj()
-        except Exception:
-            pass  # zmq.Again, or no zmq here: the iteration has ended either way
-        self.assertEqual(tok.recv_pyobj(), "a")
+        tok.begin_iteration()  # the next iteration starts with "b" unread after a receive
         self.assertTrue(any("left undelivered" in p for p in run_.problems), run_.problems)
+
+    def test_arrivals_a_skipped_iteration_leaves_stay_in_the_socket(self):
+        h = import_oracle("harness")
+
+        class One(h.Run):
+            def begin_step(self):
+                self.step += 1
+                return [f"r{self.step}"]
+
+        run_ = One({"requests": [], "max_steps": 9}, HERE)
+        tok = h.TokenizerSocket(run_)
+        tok.begin_iteration()  # step 0: the scheduler skips its receive and reads nothing
+        tok.begin_iteration()  # step 1: it reads
+        self.assertEqual([tok.recv_pyobj(), tok.recv_pyobj()], ["r0", "r1"])
+        self.assertEqual(run_.problems, [])
 
     def test_a_clocked_module_on_the_real_clock_is_found_and_replaced(self):
         h = import_oracle("harness")

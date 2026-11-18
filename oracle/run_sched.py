@@ -42,7 +42,7 @@ SCHED_SERVER_ARGS = ("enable_mixed_chunk", "max_prefill_tokens", "schedule_conse
                      "radix_eviction_policy", "enable_priority_scheduling", "prefill_max_requests",
                      "schedule_low_priority_values_first", "priority_scheduling_preemption_threshold",
                      "disable_priority_preemption", "abort_on_priority_when_disabled", "max_queued_requests",
-                     "allow_auto_truncate", "retraction_policy")
+                     "allow_auto_truncate", "retraction_policy", "scheduler_recv_interval")
 
 ORACLE_INPUTS = run_scheduler.ORACLE_INPUTS + ("oracle/run_sched.py",)
 

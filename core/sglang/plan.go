@@ -41,6 +41,8 @@ type SchedArgs struct {
 	RadixEvictionPolicy            string
 	EnableMetrics                  bool
 	DecodeLogInterval              int
+	// SchedulerRecvInterval is scheduler_recv_interval.
+	SchedulerRecvInterval int
 }
 
 // Env is the environment variables the scheduler's settings read (environ.py@297e54fd).
@@ -160,6 +162,7 @@ func SchedConfig(a SchedArgs, rt Runtime, env Env) (sched.Config, error) {
 		AllowAutoTruncate:                  a.AllowAutoTruncate,
 		ContextLen:                         rt.ContextLen,
 		DecodeLogInterval:                  a.DecodeLogInterval,
+		SchedulerRecvInterval:              a.SchedulerRecvInterval,
 		RadixEvictionPolicy:                evict,
 		RetractionPolicy:                   retraction,
 		RandomSeed:                         a.RandomSeed,

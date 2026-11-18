@@ -166,7 +166,7 @@ func schedArgs(a *config.ServerArgs, seed int64) (sglang.SchedArgs, error) {
 		AbortOnPriorityWhenDisabled: a.AbortOnPriorityWhenDisabled, MaxQueuedRequests: a.MaxQueuedRequests,
 		PrefillMaxRequests: a.PrefillMaxRequests, RetractionPolicy: a.RetractionPolicy, AllowAutoTruncate: a.AllowAutoTruncate,
 		RandomSeed: rs, DisaggregationMode: a.DisaggregationMode, PPSize: a.PpSize, PPMaxMicroBatchSize: a.PpMaxMicroBatchSize,
-		RadixEvictionPolicy: a.RadixEvictionPolicy, EnableMetrics: a.EnableMetrics, DecodeLogInterval: a.DecodeLogInterval,
+		RadixEvictionPolicy: a.RadixEvictionPolicy, EnableMetrics: a.EnableMetrics, DecodeLogInterval: a.DecodeLogInterval, SchedulerRecvInterval: a.SchedulerRecvInterval,
 	}, nil
 }
 

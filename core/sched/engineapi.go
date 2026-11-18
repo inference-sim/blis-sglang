@@ -37,6 +37,11 @@ type Launched struct {
 // refuses is returned as an error wrapping ErrRefused, and leaves the request unqueued.
 func (s *Scheduler) Enqueue(a Arrival) (err error) {
 	defer s.recoverRefusal(&err)
+	if s.cfg.SchedulerRecvInterval > 1 {
+		// The request waits in the socket until an iteration reads it (Launch).
+		s.inbox = append(s.inbox, a)
+		return nil
+	}
 	n := len(s.finishedThisStep)
 	s.handleGenerateRequest(a)
 	// What finished while the request was ingested finished without a pass.
@@ -60,7 +65,20 @@ func (s *Scheduler) recoverRefusal(err *error) {
 // aborts of an iteration that runs nothing are returned by TakeAborted.
 func (s *Scheduler) Launch() (l *Launched, err error) {
 	defer s.recoverRefusal(&err)
+	// An iteration reads the socket when the skipper lets it. Here the loop is not spun while nothing
+	// runs: with requests held and no batch to form, SGLang's idle iterations (each adds one to the
+	// counter, and an idle loop runs thousands a millisecond) read the socket at once, so the held
+	// requests are read before the pass is formed.
+	if s.recvNow() || (len(s.inbox) > 0 && s.last == nil) {
+		s.recvCounter = 0
+		s.readInbox()
+	}
 	batch := s.getNextBatchToRun()
+	if batch == nil && len(s.inbox) > 0 {
+		s.recvCounter = 0
+		s.readInbox()
+		batch = s.getNextBatchToRun()
+	}
 	if batch != nil {
 		l = &Launched{Forward: s.runBatch(batch), batch: batch, reqs: slices.Clone(batch.Reqs)}
 		if s.cfg.EnableOverlap {

@@ -43,6 +43,7 @@ var acceptedFields = map[string][]any{
 	// inert to every decision there.
 	"max_prefill_tokens":                 nil,
 	"tokenizer_worker_num":               nil,
+	"scheduler_recv_interval":            nil,
 	"kv_cache_dtype":                     {"auto", "bf16", "bfloat16", "fp8_e4m3", "fp8_e5m2"},
 	"quantization":                       {nil, "fp8", "modelopt_fp4"},
 	"tokenizer_path":                     nil,
